@@ -1,0 +1,88 @@
+{
+  "expo": {
+    "name": "SecureFinance",
+    "slug": "securefinance-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/logo.png",
+    "scheme": "securefinance",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.securefinance.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs camera access for video calls",
+        "NSMicrophoneUsageDescription": "This app needs microphone access for voice calls",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "securefinance"
+            ]
+          }
+        ]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo.png",
+        "backgroundColor": "#2563EB"
+      },
+      "package": "com.securefinance.app",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "securefinance"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/logo.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser",
+      "@config-plugins/react-native-webrtc",
+      "expo-dev-client",
+      "expo-video",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow SecureFinance to access your camera for video calls",
+          "microphonePermission": "Allow SecureFinance to access your microphone for voice and video calls",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-av",
+        {
+          "microphonePermission": "Allow SecureFinance to access your microphone for voice and video calls"
+        }
+      ],
+      "expo-audio"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "eadbdbb7-4aea-4077-b627-3d61cb465198"
+      },
+      "API_URL": "http://10.136.43.172:3001/api",
+      "SOCKET_URL": "http://10.136.43.172:3001",
+      "FRONTEND_URL": "exp://10.136.43.172:8081"
+    }
+  }
+}

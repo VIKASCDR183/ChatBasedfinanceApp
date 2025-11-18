@@ -1,0 +1,151 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  ScrollView,
+  RefreshControl,
+  Alert,
+  View,
+  Text,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFinanceStore } from '@/lib/store/financeStore';
+import { useTheme } from '../context/ThemeContext';
+import getStyles from '@/lib/styles/homeStyles';
+import HomeHeader from '../components/HomeHeader';
+import GroupsList from '../components/GroupsList';
+import RecentExpenses from '../components/RecentExpenses';
+import PendingPayments from '../components/PendingPayments';
+import HomeStats from '../components/HomeStats';
+import HomeActions from '../components/HomeActions';
+import useHomeData from '../hooks/useHomeData';
+import AccountOverview from '../components/AccountOverview';
+
+export default function HomeScreen() {
+  const [refreshing, setRefreshing] = useState(false);
+  const { 
+    currentUser, 
+    expenses, 
+    groups, 
+    splitBills,
+    loadExpenses,
+    loadGroups,
+    getSplitBills,
+    isAuthenticated,
+    isLoading,
+    error
+  } = useFinanceStore();
+  const { theme } = useTheme();
+  const styles = getStyles(theme);
+
+  const loadData = useCallback(async () => {
+    try {
+      console.log('Loading dashboard data...');
+     
+      const promises = [
+        loadExpenses().catch(error => {
+          console.error('Failed to load expenses:', error);
+          return null; 
+        }),
+        loadGroups().catch(error => {
+          console.error('Failed to load groups:', error);
+          return null; 
+        }),
+        getSplitBills().catch(error => {
+          console.error('Failed to load split bills:', error);
+          return null;
+        })
+      ];
+
+      await Promise.all(promises);
+      console.log('Dashboard data loading completed (some may have failed)');
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      
+    }
+  }, [loadExpenses, loadGroups, getSplitBills]);
+
+  useEffect(() => {
+    if (isAuthenticated && currentUser && expenses.length === 0 && groups.length === 0 && !isLoading) {
+      loadData().catch(error => {
+        console.error('Failed to load initial data:', error);
+       
+      });
+    }
+  }, [isAuthenticated, currentUser, expenses.length, groups.length, isLoading]);
+
+  
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await loadData();
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const { recentExpenses, pendingSplitBills, totalOwed, totalExpensesThisMonth, budgetRemaining, netPosition, lastMonthExpenses } = useHomeData();
+
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        <HomeHeader
+          userName={currentUser?.name || 'User'}
+        />
+
+        <AccountOverview
+          totalExpensesThisMonth={totalExpensesThisMonth}
+          budgetRemaining={budgetRemaining}
+          netPosition={netPosition}
+        />
+
+        <HomeStats totalExpensesThisMonth={totalExpensesThisMonth} totalOwed={totalOwed} budgetRemaining={budgetRemaining} netPosition={netPosition} lastMonthExpenses={lastMonthExpenses} />
+
+        {/* Quick Actions */}
+        <HomeActions />
+
+        {/* Recent Expenses */}
+        <RecentExpenses expenses={recentExpenses} />
+
+        {/* Pending Split Bills */}
+        <PendingPayments
+          splitBills={pendingSplitBills}
+          currentUserId={currentUser?._id}
+        />
+
+        {/* Groups */}
+        <GroupsList groups={groups} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function getTimeOfDay(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'morning';
+  if (hour < 17) return 'afternoon';
+  return 'evening';
+}
+
+function getCategoryIcon(category: string): string {
+  const icons: Record<string, string> = {
+    'Food': 'restaurant',
+    'Transport': 'car',
+    'Entertainment': 'game-controller',
+    'Shopping': 'bag',
+    'Bills': 'receipt',
+    'Health': 'medical',
+    'Education': 'school',
+    'Other': 'ellipsis-horizontal'
+  };
+  return icons[category] || 'ellipsis-horizontal';
+}
+

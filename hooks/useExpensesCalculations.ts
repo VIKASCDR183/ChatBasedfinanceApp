@@ -1,0 +1,122 @@
+import { useMemo } from 'react';
+
+interface Participant {
+  userId: string;
+  amount: number;
+  isPaid: boolean;
+}
+
+interface SplitBill {
+  _id: string;
+  participants: Participant[];
+  totalAmount: number;
+}
+
+export const useExpensesCalculations = (
+  expenses: any[],
+  splitBills: SplitBill[],
+  selectedGroup: any,
+  currentUser: any
+) => {
+  // Filter expenses based on selected group
+  const filteredExpenses = useMemo(() => {
+    let filtered = expenses;
+
+    if (selectedGroup) {
+      // When a group is selected, show only expenses that belong to that group
+      filtered = expenses.filter(expense =>
+        expense.groupId === selectedGroup._id
+      );
+    }
+
+    return filtered;
+  }, [expenses, selectedGroup]);
+
+  // Calculate totals
+  const totalExpensesAmount = useMemo(() => {
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+
+    return filteredExpenses
+      .filter(expense => {
+        const expenseDate = new Date(expense.createdAt);
+        return expenseDate.getMonth() === currentMonth &&
+               expenseDate.getFullYear() === currentYear;
+      })
+      .reduce((total, expense) => total + (expense.amount || 0), 0);
+  }, [filteredExpenses]);
+
+  const totalExpenses = filteredExpenses.length;
+  const totalSplitBills = splitBills.length;
+
+  // Calculate total split bill amount (user's share across all bills)
+  const totalSplitBillsAmount = useMemo(() => {
+    return splitBills
+      .filter(bill => {
+        if (!bill || !bill.participants) return false;
+        // Check if current user is a participant
+        const isParticipant = bill.participants.some((p: Participant) => {
+          const userId = typeof p.userId === 'string' ? p.userId : (p.userId as any)?._id;
+          return userId === currentUser?._id;
+        });
+        return isParticipant;
+      })
+      .reduce((total, bill) => {
+        // Get the user's share of this bill
+        const userParticipant = bill.participants.find((p: Participant) => {
+          const userId = typeof p.userId === 'string' ? p.userId : (p.userId as any)?._id;
+          return userId === currentUser?._id;
+        });
+        return total + (userParticipant?.amount || 0);
+      }, 0);
+  }, [splitBills, currentUser?._id]);
+
+  // Calculate settlement stats
+  const settlementStats = useMemo(() => ({
+    awaiting: splitBills
+      .filter(bill => bill.participants.some((p: Participant) => {
+        const userId = typeof p.userId === 'string' ? p.userId : (p.userId as any)?._id;
+        return userId === currentUser?._id && !p.isPaid;
+      }))
+      .length,
+    totalAwaiting: splitBills
+      .filter(bill => bill.participants.some((p: Participant) => {
+        const userId = typeof p.userId === 'string' ? p.userId : (p.userId as any)?._id;
+        return userId === currentUser?._id && !p.isPaid;
+      }))
+      .reduce((total, bill) => {
+        const userParticipant = bill.participants.find((p: Participant) => {
+          const userId = typeof p.userId === 'string' ? p.userId : (p.userId as any)?._id;
+          return userId === currentUser?._id;
+        });
+        return total + (userParticipant?.amount || 0);
+      }, 0),
+    settled: splitBills
+      .filter(bill => bill.participants.some((p: Participant) => {
+        const userId = typeof p.userId === 'string' ? p.userId : (p.userId as any)?._id;
+        return userId === currentUser?._id && p.isPaid;
+      }))
+      .length,
+    totalSettled: splitBills
+      .filter(bill => bill.participants.some((p: Participant) => {
+        const userId = typeof p.userId === 'string' ? p.userId : (p.userId as any)?._id;
+        return userId === currentUser?._id && p.isPaid;
+      }))
+      .reduce((total, bill) => {
+        const userParticipant = bill.participants.find((p: Participant) => {
+          const userId = typeof p.userId === 'string' ? p.userId : (p.userId as any)?._id;
+          return userId === currentUser?._id;
+        });
+        return total + (userParticipant?.amount || 0);
+      }, 0)
+  }), [splitBills, currentUser?._id]);
+
+  return {
+    filteredExpenses,
+    totalExpensesAmount,
+    totalExpenses,
+    totalSplitBills,
+    totalSplitBillsAmount,
+    settlementStats,
+  };
+};
